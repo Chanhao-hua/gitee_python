@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+streamlit>=1.30.0
+pandas>=2.2.0
+plotly>=5.22.0
+openai>=1.0.0
+apscheduler>=3.10.4
+requests>=2.32.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+playwright>=1.45.0
+jieba>=0.42.1
+fake-useragent>=1.5.0
+pytest>=8.2.0
+
