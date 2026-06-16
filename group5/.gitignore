@@ -4,8 +4,9 @@ __pycache__/
 
 data/*.db
 data/*.sqlite
+data/_jd_profile_last_search.html
+data/_pw_profile/
 logs/
 
 .streamlit/secrets.toml
 项目总结计划书/~$*.docx
-

@@ -51,7 +51,7 @@ class AgentOrchestrator:
                         "content": (
                             "你是数码电商数据采集项目的 Agent Orchestrator。"
                             "只能通过提供的 tools 调用本地 skill，不要编造执行结果。"
-                            "京东/苏宁采价格、商家、评论数量和评价标签，不采集评论正文；"
+                            "京东/苏宁采价格、商家、评论数量和具体评论正文；"
                             "ZOL 只提供排行参考。"
                         ),
                     },

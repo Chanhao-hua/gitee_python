@@ -21,7 +21,7 @@ def test_agent_fallback_schedules_live_jobs(tmp_path):
     orchestrator = AgentOrchestrator()
     orchestrator.api_key = None
     result = orchestrator.handle_command(
-        "每30分钟抓取 iPhone 16 京东和苏宁价格、商家、评论数量和评价标签"
+        "每30分钟抓取 iPhone 16 京东和苏宁价格、商家、评论数量和具体评论"
     )
     assert result["ok"] is True
     assert result["routing"] == "fallback_json_action"
@@ -42,7 +42,7 @@ def test_jd_requires_scrapingbee_key(monkeypatch):
         raise AssertionError("JD crawler must not fabricate data without ScrapingBee credentials")
 
 
-def test_query_returns_rating_tags_not_comment_text(tmp_path):
+def test_query_returns_comment_text(tmp_path):
     db_path = tmp_path / "live.db"
     from storage.db import init_database, insert_products, query_products
 
@@ -58,6 +58,7 @@ def test_query_returns_rating_tags_not_comment_text(tmp_path):
                 "merchant": "真实商家",
                 "comment_count": 128,
                 "rating_tags": "系统流畅、外观漂亮",
+                "comment_text": "手机很好用，续航也不错",
                 "rank": None,
             }
         ],
@@ -65,8 +66,8 @@ def test_query_returns_rating_tags_not_comment_text(tmp_path):
     )
 
     rows = query_products(keyword="手机", db_path=db_path)
+    assert rows[0]["comment_text"] == "手机很好用，续航也不错"
     assert rows[0]["rating_tags"] == "系统流畅、外观漂亮"
-    assert "comment_text" not in rows[0]
 
 
 def test_repeated_insert_upserts_instead_of_duplicating(tmp_path):
@@ -88,10 +89,17 @@ def test_repeated_insert_upserts_instead_of_duplicating(tmp_path):
         "merchant": "小米官方旗舰店",
         "comment_count": 200,
         "rating_tags": "拍照好、续航久",
+        "comment_text": "拍照清晰，续航满意",
         "rank": 1,
     }
     insert_products([base], db_path=db_path)
-    updated = {**base, "price": 4799.0, "comment_count": 250, "rating_tags": "性价比高、屏幕清晰"}
+    updated = {
+        **base,
+        "price": 4799.0,
+        "comment_count": 250,
+        "rating_tags": "性价比高、屏幕清晰",
+        "comment_text": "屏幕清晰，运行流畅",
+    }
     insert_products([updated], db_path=db_path)
 
     stats = get_database_stats(db_path=db_path)
@@ -100,3 +108,4 @@ def test_repeated_insert_upserts_instead_of_duplicating(tmp_path):
     assert rows[0]["price"] == 4799.0
     assert rows[0]["comment_count"] == 250
     assert rows[0]["rating_tags"] == "性价比高、屏幕清晰"
+    assert rows[0]["comment_text"] == "屏幕清晰，运行流畅"

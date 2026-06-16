@@ -68,6 +68,7 @@ def init_database(seed: bool = False, db_path: str | Path | None = None) -> None
                 price REAL,
                 merchant TEXT,
                 rating_tags TEXT,
+                comment_text TEXT,
                 comment_count INTEGER DEFAULT 0,
                 rank INTEGER,
                 crawled_at TEXT NOT NULL
@@ -75,6 +76,7 @@ def init_database(seed: bool = False, db_path: str | Path | None = None) -> None
             """
         )
         _ensure_column(conn, "product_items", "rating_tags", "TEXT")
+        _ensure_column(conn, "product_items", "comment_text", "TEXT")
         _ensure_column(conn, "product_items", "product_id", "TEXT")
         conn.execute(
             """
@@ -119,11 +121,11 @@ def insert_products(
         conn.executemany(
             """
             INSERT INTO product_items (
-                source, product_id, keyword, title, price, merchant, rating_tags,
+                source, product_id, keyword, title, price, merchant, rating_tags, comment_text,
                 comment_count, rank, crawled_at
             )
             VALUES (
-                :source, :product_id, :keyword, :title, :price, :merchant, :rating_tags,
+                :source, :product_id, :keyword, :title, :price, :merchant, :rating_tags, :comment_text,
                 :comment_count, :rank, :crawled_at
             )
             ON CONFLICT(source, product_id) WHERE product_id IS NOT NULL DO UPDATE SET
@@ -131,6 +133,7 @@ def insert_products(
                 price = excluded.price,
                 merchant = excluded.merchant,
                 rating_tags = excluded.rating_tags,
+                comment_text = COALESCE(NULLIF(excluded.comment_text, ''), product_items.comment_text),
                 comment_count = excluded.comment_count,
                 rank = excluded.rank,
                 crawled_at = excluded.crawled_at
@@ -145,6 +148,7 @@ def insert_products(
             SET price = :price,
                 merchant = :merchant,
                 rating_tags = :rating_tags,
+                comment_text = COALESCE(NULLIF(:comment_text, ''), comment_text),
                 comment_count = :comment_count,
                 rank = :rank,
                 crawled_at = :crawled_at
@@ -173,13 +177,13 @@ def query_products(
     if keyword:
         like = f"%{keyword}%"
         clauses.append(
-            "(keyword LIKE ? OR title LIKE ? OR merchant LIKE ? OR rating_tags LIKE ?)"
+            "(keyword LIKE ? OR title LIKE ? OR merchant LIKE ? OR rating_tags LIKE ? OR comment_text LIKE ?)"
         )
-        params.extend([like, like, like, like])
+        params.extend([like, like, like, like, like])
 
     where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     sql = f"""
-        SELECT source, keyword, title, price, merchant, rating_tags,
+        SELECT source, keyword, title, price, merchant, rating_tags, comment_text,
                comment_count, rank, crawled_at
         FROM product_items
         {where_sql}
@@ -202,8 +206,8 @@ def compare_sources(
     params: list[Any] = []
     if keyword:
         like = f"%{keyword}%"
-        clauses.append("(keyword LIKE ? OR title LIKE ? OR rating_tags LIKE ?)")
-        params.extend([like, like, like])
+        clauses.append("(keyword LIKE ? OR title LIKE ? OR rating_tags LIKE ? OR comment_text LIKE ?)")
+        params.extend([like, like, like, like])
     where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
     with get_connection(db_path) as conn:
@@ -273,6 +277,7 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
         "price": item.get("price"),
         "merchant": item.get("merchant"),
         "rating_tags": item.get("rating_tags") or item.get("evaluation_tags") or "",
+        "comment_text": item.get("comment_text") or "",
         "comment_count": item.get("comment_count") or 0,
         "rank": item.get("rank"),
         "crawled_at": item.get("crawled_at")

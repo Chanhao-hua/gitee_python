@@ -1,8 +1,7 @@
 """Suning live crawler.
 
 Reads Suning's public search page, requests the public price endpoint, and
-extracts only evaluation counts plus label names from the review endpoint.
-Review body text is intentionally not stored or displayed.
+extracts evaluation counts plus public review body text from the review endpoint.
 
 Improvements over the original:
 - User-Agent rotation via fake-useragent (with graceful fallback to a fixed pool).
@@ -20,7 +19,8 @@ import os
 import random
 import re
 import time
-from collections import Counter
+import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -128,22 +128,22 @@ def crawl(keyword: str, limit: int = 30, allow_live: bool = False) -> list[dict]
 
         _sleep_jitter()
         try:
-            rating_tags = _fetch_rating_tags(product)
+            comment_text = _fetch_comment_text(product)
         except Exception as exc:
-            logger.info("Skip pid=%s: rating tags fetch failed (%s)", product["_product_id"], exc)
+            logger.info("Skip pid=%s: comment fetch failed (%s)", product["_product_id"], exc)
             continue
-        if not rating_tags:
+        if not comment_text:
             continue
 
         product["price"] = price
-        product["rating_tags"] = rating_tags
+        product["comment_text"] = comment_text
         rows.append(_public_product_fields(product))
         if len(rows) >= limit:
             break
 
     if not rows:
         raise RuntimeError(
-            "苏宁公开页面可访问，但本次未解析到同时包含真实价格、商家、评论数量、评价标签的商品。"
+            "苏宁公开页面可访问，但本次未解析到同时包含真实价格、商家、评论数量、评论正文的商品。"
         )
     logger.info("Suning crawl ok: %d rows", len(rows))
     return rows
@@ -182,6 +182,7 @@ def _parse_product_node(node, keyword: str):
         "price": None,
         "merchant": merchant,
         "rating_tags": "",
+        "comment_text": "",
         "comment_count": comment_count,
         "rank": None,
         "crawled_at": datetime.now().replace(microsecond=0).isoformat(),
@@ -268,7 +269,7 @@ def _extract_price_from_response(response: requests.Response, url: str) -> float
     return None
 
 
-def _fetch_rating_tags(product: dict) -> str:
+def _fetch_comment_text(product: dict) -> str:
     product_id = product["_product_id"].zfill(18)
     vendor = product["_vendor"]
     referer = f"https://product.suning.com/{vendor}/{product_id}.html"
@@ -282,21 +283,27 @@ def _fetch_rating_tags(product: dict) -> str:
     )
     data = json.loads(_strip_jsonp(response.text, "reviewList"))
 
-    counter: Counter[str] = Counter()
+    comments: list[str] = []
     for review in data.get("commodityReviews", []):
-        for label in review.get("labelNames", []) or []:
-            name = _clean_text(str(label.get("labelName", "")))
-            if name:
-                counter[name] += 1
-        for label in review.get("guideLabelDTOList", []) or []:
-            name = _clean_text(str(label.get("labelName", "")))
-            if name:
-                counter[name] += 1
+        text = _extract_suning_review_text(review)
+        if text:
+            comments.append(text)
 
-    return "、".join(
-        f"{name}({count})" if count > 1 else name
-        for name, count in counter.most_common(12)
-    )
+    return " || ".join(comments[: int(os.getenv("SUNING_COMMENT_LIMIT", "5"))])
+
+
+def _extract_suning_review_text(review: dict) -> str:
+    for key in (
+        "content",
+        "commodityReviewContent",
+        "reviewContent",
+        "qualityStarContent",
+        "againReviewContent",
+    ):
+        text = _clean_comment_text(review.get(key))
+        if text:
+            return text
+    return ""
 
 
 def _public_product_fields(product: dict) -> dict:
@@ -309,6 +316,7 @@ def _public_product_fields(product: dict) -> dict:
             "price",
             "merchant",
             "rating_tags",
+            "comment_text",
             "comment_count",
             "rank",
             "crawled_at",
@@ -346,6 +354,16 @@ def _clean_text(value: str) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
 
 
+def _clean_comment_text(value) -> str:
+    text = _clean_text(str(value or ""))
+    if not text:
+        return ""
+    blocked = ("此用户没有填写评价", "此用户未填写评价内容", "默认好评")
+    if any(marker in text for marker in blocked):
+        return ""
+    return text
+
+
 def _looks_like_digital_product(title: str) -> bool:
     lowered = title.lower()
     excluded = (
@@ -379,3 +397,44 @@ def _looks_like_digital_product(title: str) -> bool:
         "vivo",
     )
     return any(word in lowered for word in included)
+
+
+def main() -> None:
+    _ensure_project_root_on_path()
+    parser = argparse.ArgumentParser(description="Run the Suning crawler once and print JSON rows.")
+    parser.add_argument("keyword", nargs="?", default="手机", help="Search keyword.")
+    parser.add_argument("--limit", type=int, default=5, help="Maximum rows to print.")
+    parser.add_argument("--save", action="store_true", help="Save crawled rows to SQLite.")
+    args = parser.parse_args()
+
+    try:
+        from storage.db import configure_logging
+
+        configure_logging()
+    except Exception:
+        logging.basicConfig(level=logging.INFO)
+
+    rows = crawl(keyword=args.keyword, limit=args.limit, allow_live=True)
+    if args.save:
+        inserted = _save_rows(rows)
+        logger.info("Saved %d Suning rows to SQLite", inserted)
+    print(json.dumps(rows, ensure_ascii=False, indent=2))
+
+
+def _save_rows(rows: list[dict]) -> int:
+    _ensure_project_root_on_path()
+    from storage.db import init_database, insert_products
+
+    init_database(seed=False)
+    return insert_products(rows)
+
+
+def _ensure_project_root_on_path() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    project_root_text = str(project_root)
+    if project_root_text not in sys.path:
+        sys.path.insert(0, project_root_text)
+
+
+if __name__ == "__main__":
+    main()

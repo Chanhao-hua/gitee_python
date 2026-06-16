@@ -53,7 +53,7 @@ def _render_health(health: dict[str, Any] | None) -> None:
 
 def _render_command_panel() -> None:
     st.subheader("Agent 指令")
-    default_command = "每30分钟抓取 手机 京东和苏宁价格、商家、评论数量和评价标签"
+    default_command = "每30分钟抓取 手机 京东和苏宁价格、商家、评论数量和具体评论"
     command = st.text_area("自然语言指令", value=default_command, height=92)
     if st.button("执行 Agent 指令", use_container_width=True):
         result = _post("/agent/command", {"command": command})
@@ -132,12 +132,15 @@ def _render_data_panel() -> None:
             "price": "价格",
             "merchant": "商家",
             "rating_tags": "评价标签",
+            "comment_text": "评论内容",
             "comment_count": "评论数量",
             "rank": "ZOL排行",
             "crawled_at": "更新时间",
         }
     )
-    table_columns = ["平台", "商品标题", "价格", "商家", "评论数量", "评价标签", "ZOL排行", "更新时间"]
+    if "评论内容" not in display.columns:
+        display["评论内容"] = ""
+    table_columns = ["平台", "商品标题", "价格", "商家", "评论数量", "评论内容", "ZOL排行", "更新时间"]
     st.dataframe(
         display[table_columns],
         use_container_width=True,
