@@ -14,6 +14,7 @@ from typing import Any, Iterable
 SOURCE_LABELS = {
     "jd": "京东",
     "suning": "苏宁易购",
+    "taobao": "淘宝",
     "zol": "中关村在线",
 }
 

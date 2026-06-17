@@ -21,6 +21,9 @@ SOURCE_ALIASES = {
     "suning": "suning",
     "苏宁": "suning",
     "苏宁易购": "suning",
+    "taobao": "taobao",
+    "淘宝": "taobao",
+    "天猫": "taobao",
     "zol": "zol",
     "中关村": "zol",
     "中关村在线": "zol",
@@ -38,7 +41,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "source": {"type": "string", "description": "jd/suning/zol/all"},
+                    "source": {"type": "string", "description": "jd/suning/taobao/zol/all"},
                     "keyword": {"type": "string", "description": "商品关键词"},
                     "limit": {"type": "integer", "default": 30},
                     "mode": {"type": "string", "enum": ["live"], "default": "live"},
@@ -55,7 +58,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "source": {"type": "string", "description": "jd/suning/zol/all"},
+                    "source": {"type": "string", "description": "jd/suning/taobao/zol/all"},
                     "keyword": {"type": "string"},
                     "interval_minutes": {"type": "integer", "default": 30},
                     "limit": {"type": "integer", "default": 30},
@@ -74,7 +77,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "keyword": {"type": "string"},
-                    "source": {"type": "string", "description": "可选 jd/suning/zol/all"},
+                    "source": {"type": "string", "description": "可选 jd/suning/taobao/zol/all"},
                     "limit": {"type": "integer", "default": 100},
                 },
             },
@@ -240,6 +243,8 @@ def _crawl_source(source: str, keyword: str, limit: int, mode: str) -> list[dict
         from spiders.jd_spider import crawl
     elif source == "suning":
         from spiders.suning_spider import crawl
+    elif source == "taobao":
+        from spiders.taobao_spider import crawl
     elif source == "zol":
         from spiders.zol_spider import crawl
     else:
@@ -249,12 +254,12 @@ def _crawl_source(source: str, keyword: str, limit: int, mode: str) -> list[dict
 
 def _expand_sources(source: str | None) -> list[str]:
     if not source:
-        return ["jd", "suning", "zol"]
+        return ["jd", "suning", "taobao", "zol"]
     source_text = str(source).replace("，", ",").replace("、", ",")
     parts = [part.strip() for part in source_text.split(",") if part.strip()]
     normalized = [_normalize_source(part) for part in parts]
     if not normalized or "all" in normalized:
-        return ["jd", "suning", "zol"]
+        return ["jd", "suning", "taobao", "zol"]
     return normalized
 
 

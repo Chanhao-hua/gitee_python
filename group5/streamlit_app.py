@@ -13,7 +13,7 @@ import streamlit as st
 
 
 API_BASE = os.getenv("AGENT_API_BASE", "http://127.0.0.1:8000")
-SOURCE_LABELS = {"jd": "京东", "suning": "苏宁易购", "zol": "中关村在线"}
+SOURCE_LABELS = {"jd": "京东", "suning": "苏宁易购", "taobao": "淘宝", "zol": "中关村在线"}
 
 
 st.set_page_config(

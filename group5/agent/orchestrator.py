@@ -148,6 +148,8 @@ def _extract_sources(command: str) -> str:
         sources.append("jd")
     if any(word in command for word in ["苏宁", "suning"]):
         sources.append("suning")
+    if any(word in command for word in ["淘宝", "天猫", "taobao", "tmall"]):
+        sources.append("taobao")
     if any(word in command for word in ["中关村", "ZOL", "zol"]):
         sources.append("zol")
     return ",".join(sources) if sources else "all"
