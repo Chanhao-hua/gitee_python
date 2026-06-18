@@ -11,5 +11,5 @@ lxml>=5.2.0
 playwright>=1.45.0
 jieba>=0.42.1
 fake-useragent>=1.5.0
+scrapling[fetchers]>=0.4.9
 pytest>=8.2.0
-

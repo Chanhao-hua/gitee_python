@@ -1,0 +1,6 @@
+2026/06/18-12:14:38.342 5e38 Reusing MANIFEST E:\gitee_python\project4pdc_1\group5\data\_taobao_scrapling_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/06/18-12:14:38.352 5e38 Recovering log #4
+2026/06/18-12:14:38.356 5e38 Reusing old log E:\gitee_python\project4pdc_1\group5\data\_taobao_scrapling_profile\Default\Local Storage\leveldb/000004.log 
+2026/06/18-12:14:49.096 7840 Level-0 table #8: started
+2026/06/18-12:14:49.105 7840 Level-0 table #8: 106780 bytes OK
+2026/06/18-12:14:49.109 7840 Delete type=0 #4

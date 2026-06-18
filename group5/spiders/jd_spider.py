@@ -51,6 +51,7 @@ from bs4 import BeautifulSoup
 
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 SCRAPINGBEE_ENDPOINT = os.getenv(
     "SCRAPINGBEE_ENDPOINT", "https://app.scrapingbee.com/api/v1/"
@@ -153,15 +154,14 @@ def _crawl_with_browser_profile(keyword: str, limit: int) -> list[dict[str, Any]
             "`python -m playwright install chromium` if needed."
         ) from exc
 
-    profile_dir = Path(os.getenv("JD_PROFILE_DIR", str(Path("data") / "_pw_profile")))
-    if not profile_dir.exists():
-        raise RuntimeError(f"JD profile directory does not exist: {profile_dir}")
+    profile_dir = Path(os.getenv("JD_PROFILE_DIR", str(PROJECT_ROOT / "data" / "_pw_profile")))
+    profile_dir.mkdir(parents=True, exist_ok=True)
 
     target = f"https://search.jd.com/Search?keyword={quote(keyword)}&enc=utf-8"
     logger.info("Fetching JD search with local browser profile for keyword=%r", keyword)
 
     with sync_playwright() as playwright:
-        headless = os.getenv("JD_HEADLESS", "true").lower() != "false"
+        headless = os.getenv("JD_HEADLESS", "false").lower() == "true"
         if _env_bool("JD_SLOW_MODE", False) and "JD_HEADLESS" not in os.environ:
             headless = False
         context = playwright.chromium.launch_persistent_context(
@@ -243,10 +243,7 @@ def _fetch_comments_with_profile_page(page: Any, sku: str) -> str:
 
 
 def _can_wait_for_profile_login(headless: bool) -> bool:
-    return (
-        not headless
-        and os.getenv("JD_PROFILE_WAIT_LOGIN", "false").lower() == "true"
-    )
+    return not headless and os.getenv("JD_PROFILE_WAIT_LOGIN", "true").lower() == "true"
 
 
 def _wait_for_manual_profile_login(page: Any, target: str) -> None:

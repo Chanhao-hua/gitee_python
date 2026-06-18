@@ -13,7 +13,12 @@ import streamlit as st
 
 
 API_BASE = os.getenv("AGENT_API_BASE", "http://127.0.0.1:8000")
-SOURCE_LABELS = {"jd": "京东", "suning": "苏宁易购", "taobao": "淘宝", "zol": "中关村在线"}
+SOURCE_LABELS = {
+    "suning": "苏宁易购",
+    "vip": "唯品会",
+    "bilibili": "哔哩哔哩",
+    "zol": "中关村在线",
+}
 
 
 st.set_page_config(
@@ -53,7 +58,7 @@ def _render_health(health: dict[str, Any] | None) -> None:
 
 def _render_command_panel() -> None:
     st.subheader("Agent 指令")
-    default_command = "每30分钟抓取 手机 京东和苏宁价格、商家、评论数量和具体评论"
+    default_command = "每30分钟抓取 手机 苏宁和哔哩哔哩价格、商家、评论数量和具体评论"
     command = st.text_area("自然语言指令", value=default_command, height=92)
     if st.button("执行 Agent 指令", use_container_width=True):
         result = _post("/agent/command", {"command": command})
@@ -65,13 +70,13 @@ def _render_command_panel() -> None:
     if quick_cols[0].button("手动抓取", use_container_width=True):
         st.session_state["last_agent_result"] = _post(
             "/skills/crawl",
-            {"source": "jd,suning", "keyword": keyword, "limit": 30, "mode": "live"},
+            {"source": "suning,bilibili", "keyword": keyword, "limit": 30, "mode": "live"},
         )
     if quick_cols[1].button("设置定时", use_container_width=True):
         st.session_state["last_agent_result"] = _post(
             "/skills/schedule",
             {
-                "source": "jd,suning",
+                "source": "suning,bilibili",
                 "keyword": keyword,
                 "interval_minutes": 30,
                 "limit": 30,
@@ -121,7 +126,7 @@ def _render_data_panel() -> None:
     rows = products.get("rows", [])
     df = pd.DataFrame(rows)
     if df.empty:
-        st.warning("暂无真实数据。请先手动抓取，或配置淘宝授权真实数据/API 后再执行 Agent 指令。")
+        st.warning("暂无真实数据。请先手动抓取，或完成需要登录的数据源授权后再执行 Agent 指令。")
         return
 
     display = df.copy()
@@ -131,16 +136,12 @@ def _render_data_panel() -> None:
             "title": "商品标题",
             "price": "价格",
             "merchant": "商家",
-            "rating_tags": "评价标签",
-            "comment_text": "评论内容",
             "comment_count": "评论数量",
             "rank": "ZOL排行",
             "crawled_at": "更新时间",
         }
     )
-    if "评论内容" not in display.columns:
-        display["评论内容"] = ""
-    table_columns = ["平台", "商品标题", "价格", "商家", "评论数量", "评论内容", "ZOL排行", "更新时间"]
+    table_columns = ["平台", "商品标题", "价格", "商家", "评论数量", "ZOL排行", "更新时间"]
     st.dataframe(
         display[table_columns],
         use_container_width=True,

@@ -5,3 +5,5 @@
 2026-06-16 12:54:16,875 INFO [__main__] Suning crawl ok: 5 rows
 2026-06-16 12:56:38,502 INFO [__main__] Suning crawl start: keyword='手机' limit=5
 2026-06-16 12:57:19,785 INFO [__main__] Suning crawl ok: 5 rows
+2026-06-18 01:31:43,743 INFO [__main__] Suning crawl start: keyword='手机' limit=5
+2026-06-18 01:32:25,367 INFO [__main__] Suning crawl ok: 5 rows

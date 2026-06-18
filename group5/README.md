@@ -4,21 +4,31 @@
 
 ## 功能
 
-- 自然语言触发 Agent，例如"每30分钟抓取 手机 京东和苏宁价格、商家、评论数量和评价标签"。
+- 自然语言触发 Agent，例如"每30分钟抓取 手机 苏宁和哔哩哔哩价格、商家、评论数量和具体评论"。
 - 白名单 skills：手动抓取、设置定时、查询商品、平台对比、任务状态。
-- 主要数据源：京东、苏宁易购，ZOL 保留为可选排行参考源。
-- 京东/苏宁字段：价格、商家、评论数量、评价标签。
-- 不采集、不保存、不展示评论正文。
+- 主要数据源：苏宁易购、唯品会、哔哩哔哩；ZOL 作为手机和笔记本电脑型号参考源。
+- 主商品库 `data/live_products.db` 只保存商品基础字段：来源、型号关键词、标题、价格、商家、评论数、排名和抓取时间。
+- 评论明细库 `data/product_comments.db` 按"型号 - 商家 - 具体评论"保存评论正文。
 - 不再生成样例数据；数据库初始化为空，只有真实抓取或授权真实数据解析成功才写入。
-- SQLite 设有 `UNIQUE(source, product_id)` 索引，重复抓取自动 UPSERT，不会撑爆表。
+- SQLite 设有 `UNIQUE(source, title, merchant)` 索引，重复抓取自动 UPSERT，不会撑爆表。
 - 苏宁爬虫：User-Agent 轮换、随机请求间隔、指数退避重试、价格接口多模板降级。
+- 唯品会爬虫：使用独立 Playwright 用户目录保存登录状态，登录后监听搜索页公开商品接口写入 SQLite。
+- 哔哩哔哩爬虫：根据 ZOL 手机/笔记本型号定向搜索视频，抓取视频标题、BV 号和视频下方公开评论。
 - 所有爬虫/调度的关键事件都会写到 `logs/spider.log`（rotating，单文件 2MB × 3）。
+
+哔哩哔哩爬虫默认交互式选择“爬型号 / 爬类型”，爬类型时会读取 ZOL 型号库，默认抓取 150 条视频数据：
+
+```powershell
+python spiders/bilibili_spider.py
+python spiders/bilibili_spider.py "iPhone 15" --limit 30
+python spiders/bilibili_spider.py --category phone --limit 150
+```
 
 ## 运行
 
 ```powershell
 python -m pip install -r requirements.txt
-python -m playwright install chromium  # 仅在用 ScrapingBee 失败时本地排错时用
+python -m playwright install chromium  # 仅在使用唯品会 Playwright 登录态时需要
 python -m uvicorn api.main:app --reload --port 8000
 ```
 
@@ -38,26 +48,27 @@ $env:GITEE_AI_BASE_URL="https://ai.gitee.com/v1"
 $env:GITEE_AI_MODEL="qwen2.5-72b-instruct"
 ```
 
-## 京东真实数据配置 (ScrapingBee)
+## 哔哩哔哩数据源
 
-京东 `search.jd.com` 对非浏览器请求强制重定向到登录页，requests/playwright headless 都会被风控直接挡掉。本项目采用云端渲染代理 [ScrapingBee](https://app.scrapingbee.com/account/register) 拉取渲染后的 HTML，再本地解析。
-
-```powershell
-$env:SCRAPINGBEE_API_KEY="你的key"  # 免费注册即送 1000 次调用额度
-# 可选
-$env:JD_RENDER_JS="true"        # 默认 true,关掉会快很多但只能拿到首屏
-$env:JD_PREMIUM_PROXY="true"    # 默认 true,关掉就走普通代理,过京东风控概率低
-```
-
-不配置 API key 时，京东 skill 会返回清晰的报错，不会伪造数据。
+B 站不需要登录。爬虫会先访问首页和搜索页获取基础 cookie，再访问公开搜索和评论接口。
 
 字段映射：
-- 商品列表：`search.jd.com/Search?keyword=...` 渲染后的 `li.gl-item`，取 `.p-name em` / `.p-price i` / `.p-shop a` / `.p-commit strong a`。
-- 评价摘要：`club.jd.com/comment/productCommentSummaries.action`，取好评率 / 追评数 / 差评数拼成 `rating_tags`。
+- `keyword`：ZOL 型号或手动输入的型号。
+- `title`：视频标题。
+- `merchant`：BV 号。
+- `comment_count`：B 站评论总数。
+- 视频下方公开评论不会写入商品表，会直接逐条写入 `data/product_comments.db`。
+
+可选环境变量：
+
+```powershell
+$env:BILIBILI_COMMENTS_PER_VIDEO="20"
+$env:BILIBILI_MAX_SEARCH_PAGES="10"
+```
 
 ## 合规说明
 
-项目不绕过验证码、不破解签名、不抓取隐私数据、不强行访问受限接口。苏宁抓取基于当前可访问的公开页面、价格接口和评价标签接口。京东走第三方渲染服务商，由其负责合规处理 robots/反爬。
+项目不绕过验证码、不破解签名、不抓取隐私数据、不强行访问受限接口。苏宁抓取基于当前可访问的公开页面、价格接口和评价接口；B 站抓取公开搜索结果和公开评论；ZOL 仅作为公开型号参考源。
 
 ## API
 

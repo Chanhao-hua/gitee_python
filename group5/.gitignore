@@ -1,14 +1,26 @@
+# Python/runtime caches
 __pycache__/
+*.py[cod]
 .pytest_cache/
-*.pyc
 
+# Local crawl data and generated databases
 data/*.db
 data/*.sqlite
-data/_jd_profile_last_search.html
-data/_taobao_last_search.html
+data/_*_last_search.html
+data/_*_search*.html
+data/_*_cat*.html
+
+# Browser profiles may contain login state/cookies
 data/_pw_profile/
 data/_taobao_profile/
+
+# Logs and screenshots generated while testing
 logs/
+**/logs/
+*.log
+*.out.log
+*.err.log
+*-screenshot*.png
 
 .streamlit/secrets.toml
-项目总结计划书/~$*.docx
+~$*.docx
